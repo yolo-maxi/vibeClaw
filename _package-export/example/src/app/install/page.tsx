@@ -283,6 +283,27 @@ function App() {
         </section>
 
         <section>
+          <h2>Claude Code</h2>
+          <p>
+            If you use Claude Code, you can set up Agentation automatically. Install the skill:
+          </p>
+          <CodeBlock code="npx add-skill benjitaylor/agentation" language="bash" copyable />
+          <p style={{ marginTop: "1rem" }}>
+            Then run it:
+          </p>
+          <CodeBlock code="/agentation" language="bash" copyable />
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: "rgba(0,0,0,0.5)",
+              marginTop: "0.5rem",
+            }}
+          >
+            Detects your framework, installs the package, creates a provider, and wires it into your layout.
+          </p>
+        </section>
+
+        <section>
           <h2>Requirements</h2>
           <ul>
             <li>
