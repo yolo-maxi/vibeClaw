@@ -191,10 +191,16 @@ button {
 
   .nav-meta {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 0.375rem;
     margin-top: 0.75rem;
     animation: navVersionFadeIn 0.4s ease-out forwards;
+  }
+
+  .nav-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
   }
 
   .nav-version {
@@ -214,6 +220,17 @@ button {
     font-size: 0.625rem;
     color: rgba(0, 0, 0, 0.2);
     font-weight: 450;
+  }
+
+  .nav-github {
+    display: flex;
+    padding: 0.25rem 0.25rem 0.25rem 0;
+    color: rgba(0, 0, 0, 0.2);
+    transition: color 0.15s ease;
+
+    &:hover {
+      color: rgba(0, 0, 0, 0.4);
+    }
   }
 
   @keyframes navVersionFadeIn {
