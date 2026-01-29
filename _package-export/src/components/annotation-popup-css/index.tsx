@@ -20,8 +20,8 @@ export interface AnnotationPopupCSSProps {
   initialValue?: string;
   /** Label for submit button (default: "Add") */
   submitLabel?: string;
-  /** Called when annotation is submitted with text */
-  onSubmit: (text: string) => void;
+  /** Called when annotation is submitted with text and optional image */
+  onSubmit: (text: string, imageData?: string) => void;
   /** Called when popup is cancelled/dismissed */
   onCancel: () => void;
   /** Position styles (left, top) */
@@ -34,6 +34,8 @@ export interface AnnotationPopupCSSProps {
   lightMode?: boolean;
   /** Computed styles for the selected element */
   computedStyles?: Record<string, string>;
+  /** Enable image paste (shows preview, includes in submit) */
+  enableImagePaste?: boolean;
 }
 
 export interface AnnotationPopupCSSHandle {
@@ -71,6 +73,7 @@ export const AnnotationPopupCSS = forwardRef<AnnotationPopupCSSHandle, Annotatio
       isExiting = false,
       lightMode = false,
       computedStyles,
+      enableImagePaste = false,
     },
     ref
   ) {
@@ -79,6 +82,7 @@ export const AnnotationPopupCSS = forwardRef<AnnotationPopupCSSHandle, Annotatio
     const [animState, setAnimState] = useState<"initial" | "enter" | "entered" | "exit">("initial");
     const [isFocused, setIsFocused] = useState(false);
     const [isStylesExpanded, setIsStylesExpanded] = useState(false); // Computed styles accordion state
+    const [pastedImage, setPastedImage] = useState<string | null>(null); // Base64 image data
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const popupRef = useRef<HTMLDivElement>(null);
 
@@ -138,8 +142,37 @@ export const AnnotationPopupCSS = forwardRef<AnnotationPopupCSSHandle, Annotatio
     // Handle submit
     const handleSubmit = useCallback(() => {
       if (!text.trim()) return;
-      onSubmit(text.trim());
-    }, [text, onSubmit]);
+      onSubmit(text.trim(), pastedImage || undefined);
+    }, [text, onSubmit, pastedImage]);
+
+    // Handle paste (for images)
+    const handlePaste = useCallback((e: React.ClipboardEvent) => {
+      if (!enableImagePaste) return;
+      
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          e.preventDefault();
+          const file = items[i].getAsFile();
+          if (!file) return;
+          
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const base64 = event.target?.result as string;
+            setPastedImage(base64);
+          };
+          reader.readAsDataURL(file);
+          break;
+        }
+      }
+    }, [enableImagePaste]);
+
+    // Remove pasted image
+    const removePastedImage = useCallback(() => {
+      setPastedImage(null);
+    }, []);
 
     // Handle keyboard
     const handleKeyDown = useCallback(
@@ -240,14 +273,29 @@ export const AnnotationPopupCSS = forwardRef<AnnotationPopupCSSHandle, Annotatio
           ref={textareaRef}
           className={styles.textarea}
           style={{ borderColor: isFocused ? accentColor : undefined }}
-          placeholder={placeholder}
+          placeholder={enableImagePaste ? `${placeholder} (paste image)` : placeholder}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
+          onPaste={handlePaste}
           rows={2}
           onKeyDown={handleKeyDown}
         />
+
+        {pastedImage && (
+          <div className={styles.imagePreview}>
+            <img src={pastedImage} alt="Pasted reference" />
+            <button 
+              className={styles.removeImage} 
+              onClick={removePastedImage}
+              type="button"
+              title="Remove image"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         <div className={styles.actions}>
           <button className={styles.cancel} onClick={handleCancel}>

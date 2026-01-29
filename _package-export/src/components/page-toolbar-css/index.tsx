@@ -1342,7 +1342,7 @@ export function PageFeedbackToolbarCSS({
 
   // Add annotation
   const addAnnotation = useCallback(
-    (comment: string) => {
+    (comment: string, imageData?: string) => {
       if (!pendingAnnotation) return;
 
       const newAnnotation: Annotation = {
@@ -1364,6 +1364,7 @@ export function PageFeedbackToolbarCSS({
         computedStyles: pendingAnnotation.computedStyles,
         nearbyElements: pendingAnnotation.nearbyElements,
         status: apiMode ? 'draft' as const : undefined,
+        imageData,
       };
 
       setAnnotations((prev) => [...prev, newAnnotation]);
@@ -2775,6 +2776,7 @@ export function PageFeedbackToolbarCSS({
                 onCancel={cancelAnnotation}
                 isExiting={pendingExiting}
                 lightMode={!isDarkMode}
+                enableImagePaste={apiMode}
                 accentColor={
                   pendingAnnotation.isMultiSelect
                     ? "#34C759"

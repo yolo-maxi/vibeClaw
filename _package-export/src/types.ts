@@ -26,6 +26,7 @@ export type Annotation = {
   status?: AnnotationStatus;
   remoteId?: string; // ID returned from API after submission
   tokenOwner?: string; // Human-readable name of the token owner (from API)
+  imageData?: string; // Base64 image data (reference image pasted by user)
 };
 
 export type SendResult = {

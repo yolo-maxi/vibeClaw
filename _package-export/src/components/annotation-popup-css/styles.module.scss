@@ -375,4 +375,50 @@ $green: #34c759;
             color: rgba(0, 0, 0, 0.75);
         }
     }
+
+    .imagePreview {
+        background: rgba(0, 0, 0, 0.03);
+        border-color: rgba(0, 0, 0, 0.1);
+    }
+}
+
+// Image preview
+.imagePreview {
+    position: relative;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+
+    img {
+        display: block;
+        max-width: 100%;
+        max-height: 120px;
+        border-radius: 4px;
+        object-fit: contain;
+    }
+
+    .removeImage {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.6);
+        border: none;
+        border-radius: 50%;
+        color: white;
+        font-size: 12px;
+        cursor: pointer;
+        opacity: 0.7;
+        transition: opacity 0.15s ease;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
 }
