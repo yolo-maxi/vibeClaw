@@ -1847,20 +1847,20 @@ export function PageFeedbackToolbarCSS({
                       <span className={styles.statusDraft}>draft</span>
                     )}
                     {annotation.status === 'pending' && (
-                      <span className={styles.statusPending}><IconClock size={12} /> pending</span>
+                      <span className={styles.statusPending}><IconClock size={10} /> pending</span>
                     )}
                     {annotation.status === 'processing' && (
-                      <span className={styles.statusProcessing}><IconSpinner size={12} /> processing</span>
+                      <span className={styles.statusProcessing}><IconSpinner size={10} /> processing</span>
                     )}
                     {annotation.status === 'completed' && (
-                      <span className={styles.statusCompleted}><IconCheckSmall size={12} /> done</span>
+                      <span className={styles.statusCompleted}><IconCheckSmall size={10} /> done</span>
                     )}
                     {annotation.status === 'failed' && (
-                      <span className={styles.statusFailed}><IconXmark size={12} /> failed</span>
+                      <span className={styles.statusFailed}><IconXmark size={10} /> failed</span>
                     )}
                   </div>
                   <div className={styles.batchItemActions}>
-                    {(!annotation.status || annotation.status === 'draft' || annotation.status === 'failed') && (
+                    {(!annotation.status || annotation.status === 'draft') && (
                       <>
                         <button
                           className={styles.batchItemAction}
@@ -1870,7 +1870,7 @@ export function PageFeedbackToolbarCSS({
                           }}
                           title="Edit"
                         >
-                          <IconPencil size={14} />
+                          <IconPencil size={10} />
                         </button>
                         <button
                           className={styles.batchItemAction}
@@ -1880,7 +1880,7 @@ export function PageFeedbackToolbarCSS({
                           }}
                           title="Send"
                         >
-                          <IconSend size={14} />
+                          <IconSend size={10} />
                         </button>
                         <button
                           className={`${styles.batchItemAction} ${styles.danger}`}
@@ -1890,7 +1890,7 @@ export function PageFeedbackToolbarCSS({
                           }}
                           title="Delete"
                         >
-                          <IconTrashAlt size={14} />
+                          <IconTrashAlt size={10} />
                         </button>
                       </>
                     )}
@@ -2356,7 +2356,7 @@ export function PageFeedbackToolbarCSS({
                       </span>
                       {apiMode && (
                         <div className={styles.markerActions}>
-                          {(!annotation.status || annotation.status === 'draft' || annotation.status === 'failed') && (
+                          {(!annotation.status || annotation.status === 'draft') && (
                             <>
                               <button
                                 className={styles.markerAction}
@@ -2516,7 +2516,7 @@ export function PageFeedbackToolbarCSS({
                       </span>
                       {apiMode && (
                         <div className={styles.markerActions}>
-                          {(!annotation.status || annotation.status === 'draft' || annotation.status === 'failed') && (
+                          {(!annotation.status || annotation.status === 'draft') && (
                             <>
                               <button
                                 className={styles.markerAction}
