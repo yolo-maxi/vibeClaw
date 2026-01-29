@@ -2,7 +2,7 @@
 // Shared Types
 // =============================================================================
 
-export type AnnotationStatus = "draft" | "pending" | "processing" | "completed" | "interrupted" | "failed";
+export type AnnotationStatus = "draft" | "pending" | "processing" | "completed" | "interrupted" | "failed" | "rejected";
 
 export type Annotation = {
   id: string;
