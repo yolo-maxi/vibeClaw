@@ -749,11 +749,6 @@ export function PageFeedbackToolbarCSS({
       if (target.closest("[data-annotation-popup]")) return;
       if (target.closest("[data-annotation-marker]")) return;
 
-      // In click mode (API mode), let the UI work normally
-      if (apiMode && clickMode) {
-        return;
-      }
-
       const isInteractive = target.closest(
         "button, a, input, select, textarea, [role='button'], [onclick]",
       );
@@ -841,8 +836,6 @@ export function PageFeedbackToolbarCSS({
     pendingAnnotation,
     editingAnnotation,
     settings.blockInteractions,
-    apiMode,
-    clickMode,
   ]);
 
   // Multi-select drag - mousedown
@@ -1631,9 +1624,13 @@ export function PageFeedbackToolbarCSS({
       
       setAnnotations(prev => prev.map(a => {
         if (!a.remoteId) return a;
-        const remote = remoteAnnotations.find((r: { id: string; status?: string }) => r.id === a.remoteId);
-        if (remote && remote.status !== a.status) {
-          const updated = { ...a, status: remote.status as Annotation['status'] };
+        const remote = remoteAnnotations.find((r: { id: string; status?: string; tokenOwner?: string }) => r.id === a.remoteId);
+        if (remote && (remote.status !== a.status || remote.tokenOwner !== a.tokenOwner)) {
+          const updated = { 
+            ...a, 
+            status: remote.status as Annotation['status'],
+            tokenOwner: remote.tokenOwner,
+          };
           onStatusChange?.(updated);
           return updated;
         }
@@ -1939,6 +1936,9 @@ export function PageFeedbackToolbarCSS({
                   <span className={styles.batchItemComment}>
                     {annotation.comment.length > 30 ? annotation.comment.slice(0, 30) + '...' : annotation.comment}
                   </span>
+                  {annotation.tokenOwner && (
+                    <span className={styles.batchItemOwner} title="Submitted by">{annotation.tokenOwner}</span>
+                  )}
                   <div className={styles.batchItemStatus}>
                     {(!annotation.status || annotation.status === 'draft') && (
                       <span className={styles.statusDraft}>draft</span>
@@ -2079,25 +2079,7 @@ export function PageFeedbackToolbarCSS({
               </span>
             </div>
 
-            {apiMode ? (
-              <div className={styles.buttonWrapper}>
-                <button
-                  className={`${styles.controlButton} ${!isDarkMode ? styles.light : ""}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    hideTooltipsUntilMouseLeave();
-                    setClickMode(!clickMode);
-                  }}
-                  data-active={clickMode}
-                >
-                  {clickMode ? <IconCursor size={24} /> : <IconCrosshair size={24} />}
-                </button>
-                <span className={styles.buttonTooltip}>
-                  {clickMode ? "Click mode (UI works)" : "Annotate mode"}
-                  <span className={styles.shortcut}>M</span>
-                </span>
-              </div>
-            ) : (
+            {!apiMode && (
               <div className={styles.buttonWrapper}>
                 <button
                   className={`${styles.controlButton} ${!isDarkMode ? styles.light : ""}`}
@@ -2800,6 +2782,7 @@ export function PageFeedbackToolbarCSS({
                       ? "Feedback for this group of elements..."
                       : "What should change?"
                 }
+                submitLabel={apiMode ? "SEND" : "Add"}
                 onSubmit={addAnnotation}
                 onCancel={cancelAnnotation}
                 isExiting={pendingExiting}

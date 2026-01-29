@@ -25,6 +25,7 @@ export type Annotation = {
   // API integration fields
   status?: AnnotationStatus;
   remoteId?: string; // ID returned from API after submission
+  tokenOwner?: string; // Human-readable name of the token owner (from API)
 };
 
 export type SendResult = {

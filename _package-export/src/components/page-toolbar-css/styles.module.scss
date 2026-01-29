@@ -1731,10 +1731,6 @@ $green: #34c759;
 
     &:hover {
         background: rgba(255, 255, 255, 0.05);
-
-        .batchItemActions {
-            opacity: 1;
-        }
     }
 
     .light &:hover {
@@ -1791,6 +1787,23 @@ $green: #34c759;
     }
 }
 
+.batchItemOwner {
+    font-size: 0.5625rem;
+    color: #58a6ff;
+    background: rgba(88, 166, 255, 0.15);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+    max-width: 5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    .light & {
+        color: #0969da;
+        background: rgba(9, 105, 218, 0.1);
+    }
+}
+
 .batchItemStatus {
     font-size: 0.5625rem;
     display: flex;
@@ -1841,8 +1854,7 @@ $green: #34c759;
 .batchItemActions {
     display: flex;
     gap: 0.125rem;
-    opacity: 0;
-    transition: opacity 0.15s ease;
+    opacity: 1;
 }
 
 .batchItemAction {
