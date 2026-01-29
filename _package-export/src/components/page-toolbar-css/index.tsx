@@ -1940,8 +1940,8 @@ export function PageFeedbackToolbarCSS({
                     <span className={styles.batchItemOwner} title="Submitted by">{annotation.tokenOwner}</span>
                   )}
                   <div className={styles.batchItemStatus}>
-                    {(!annotation.status || annotation.status === 'draft') && (
-                      <span className={styles.statusDraft}>draft</span>
+                    {(!annotation.status || annotation.status === 'draft') && countdowns[annotation.id] !== undefined && (
+                      <span className={styles.statusSending}>sending ({countdowns[annotation.id]})</span>
                     )}
                     {annotation.status === 'pending' && (
                       <span className={styles.statusPending}><IconClock size={10} /> implementing</span>
@@ -1960,30 +1960,18 @@ export function PageFeedbackToolbarCSS({
                     )}
                   </div>
                   <div className={styles.batchItemActions}>
-                    {countdowns[annotation.id] !== undefined ? (
-                      <button
-                        className={`${styles.batchItemAction} ${styles.countdown}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          cancelCountdown(annotation.id);
-                        }}
-                        title="Cancel"
-                      >
-                        <span className={styles.countdownNumber}>{countdowns[annotation.id]}</span>
-                        <IconXmark size={8} />
-                      </button>
-                    ) : (!annotation.status || annotation.status === 'draft') ? (
+                    {countdowns[annotation.id] !== undefined && (
                       <button
                         className={`${styles.batchItemAction} ${styles.danger}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           cancelCountdown(annotation.id);
                         }}
-                        title="Delete"
+                        title="Cancel"
                       >
-                        <IconTrashAlt size={10} />
+                        <IconXmark size={10} />
                       </button>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               ))}

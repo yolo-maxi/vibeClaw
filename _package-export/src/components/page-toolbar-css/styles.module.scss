@@ -1816,6 +1816,11 @@ $green: #34c759;
     .light & { color: rgba(0, 0, 0, 0.35); }
 }
 
+.statusSending {
+    color: #FF9500;
+    font-variant-numeric: tabular-nums;
+}
+
 .statusPending {
     color: #FF9500;
     display: flex;
