@@ -38,6 +38,8 @@ import {
   IconPencil,
   IconSpinner,
   IconClock,
+  IconCursor,
+  IconCrosshair,
 } from "../icons";
 import {
   identifyElement,
@@ -366,6 +368,13 @@ export function PageFeedbackToolbarCSS({
   const [isSending, setIsSending] = useState(false);
   const [showBatchPanel, setShowBatchPanel] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Click mode - when true, user can interact with UI normally (no annotation creation)
+  const [clickMode, setClickMode] = useState(false);
+  
+  // Auto-send countdown timers (annotation id → seconds remaining)
+  const [countdowns, setCountdowns] = useState<Record<string, number>>({});
+  const countdownTimersRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
 
   // Draggable toolbar state
   const [toolbarPosition, setToolbarPosition] = useState<{
@@ -740,6 +749,11 @@ export function PageFeedbackToolbarCSS({
       if (target.closest("[data-annotation-popup]")) return;
       if (target.closest("[data-annotation-marker]")) return;
 
+      // In click mode (API mode), let the UI work normally
+      if (apiMode && clickMode) {
+        return;
+      }
+
       const isInteractive = target.closest(
         "button, a, input, select, textarea, [role='button'], [onclick]",
       );
@@ -827,6 +841,8 @@ export function PageFeedbackToolbarCSS({
     pendingAnnotation,
     editingAnnotation,
     settings.blockInteractions,
+    apiMode,
+    clickMode,
   ]);
 
   // Multi-select drag - mousedown
@@ -1256,6 +1272,81 @@ export function PageFeedbackToolbarCSS({
     return () => document.removeEventListener("mouseup", handleMouseUp);
   }, [isActive, isDragging]);
 
+  // Start countdown for auto-send (API mode)
+  const startCountdown = useCallback((annotationId: string) => {
+    if (!apiMode || !onSend) return;
+    
+    // Set initial countdown
+    setCountdowns(prev => ({ ...prev, [annotationId]: 10 }));
+    
+    // Start interval
+    const timer = setInterval(() => {
+      setCountdowns(prev => {
+        const current = prev[annotationId];
+        if (current === undefined || current <= 1) {
+          // Countdown finished - trigger auto-send
+          clearInterval(timer);
+          delete countdownTimersRef.current[annotationId];
+          
+          // Get the annotation and send it
+          setAnnotations(currentAnnotations => {
+            const annotation = currentAnnotations.find(a => a.id === annotationId);
+            if (annotation && (!annotation.status || annotation.status === 'draft')) {
+              // Mark as pending and send
+              onSend([annotation]).then(results => {
+                const result = results[0];
+                setAnnotations(prev => prev.map(a => {
+                  if (a.id === annotationId) {
+                    return {
+                      ...a,
+                      status: result?.success ? 'pending' as const : 'failed' as const,
+                      remoteId: result?.remoteId,
+                    };
+                  }
+                  return a;
+                }));
+              }).catch(() => {
+                setAnnotations(prev => prev.map(a => 
+                  a.id === annotationId ? { ...a, status: 'failed' as const } : a
+                ));
+              });
+              
+              // Immediately mark as sending
+              return currentAnnotations.map(a => 
+                a.id === annotationId ? { ...a, status: 'pending' as const } : a
+              );
+            }
+            return currentAnnotations;
+          });
+          
+          const { [annotationId]: _, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [annotationId]: current - 1 };
+      });
+    }, 1000);
+    
+    countdownTimersRef.current[annotationId] = timer;
+  }, [apiMode, onSend]);
+
+  // Cancel countdown and remove annotation
+  const cancelCountdown = useCallback((annotationId: string) => {
+    // Clear timer
+    if (countdownTimersRef.current[annotationId]) {
+      clearInterval(countdownTimersRef.current[annotationId]);
+      delete countdownTimersRef.current[annotationId];
+    }
+    
+    // Remove from countdowns
+    setCountdowns(prev => {
+      const { [annotationId]: _, ...rest } = prev;
+      return rest;
+    });
+    
+    // Delete the annotation
+    deleteAnnotation(annotationId);
+  }, []);
+
   // Add annotation
   const addAnnotation = useCallback(
     (comment: string) => {
@@ -1279,6 +1370,7 @@ export function PageFeedbackToolbarCSS({
         accessibility: pendingAnnotation.accessibility,
         computedStyles: pendingAnnotation.computedStyles,
         nearbyElements: pendingAnnotation.nearbyElements,
+        status: apiMode ? 'draft' as const : undefined,
       };
 
       setAnnotations((prev) => [...prev, newAnnotation]);
@@ -1294,6 +1386,11 @@ export function PageFeedbackToolbarCSS({
 
       // Fire callback
       onAnnotationAdd?.(newAnnotation);
+      
+      // In API mode, start 10s countdown for auto-send
+      if (apiMode) {
+        startCountdown(newAnnotation.id);
+      }
 
       // Animate out the pending annotation UI
       setPendingExiting(true);
@@ -1304,7 +1401,7 @@ export function PageFeedbackToolbarCSS({
 
       window.getSelection()?.removeAllRanges();
     },
-    [pendingAnnotation, onAnnotationAdd],
+    [pendingAnnotation, onAnnotationAdd, apiMode, startCountdown],
   );
 
   // Cancel annotation with exit animation
@@ -1863,40 +1960,30 @@ export function PageFeedbackToolbarCSS({
                     )}
                   </div>
                   <div className={styles.batchItemActions}>
-                    {(!annotation.status || annotation.status === 'draft') && (
-                      <>
-                        <button
-                          className={styles.batchItemAction}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            startEditAnnotation(annotation);
-                          }}
-                          title="Edit"
-                        >
-                          <IconPencil size={10} />
-                        </button>
-                        <button
-                          className={styles.batchItemAction}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            sendAnnotation(annotation);
-                          }}
-                          title="Send"
-                        >
-                          <IconSend size={10} />
-                        </button>
-                        <button
-                          className={`${styles.batchItemAction} ${styles.danger}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteAnnotation(annotation.id);
-                          }}
-                          title="Delete"
-                        >
-                          <IconTrashAlt size={10} />
-                        </button>
-                      </>
-                    )}
+                    {countdowns[annotation.id] !== undefined ? (
+                      <button
+                        className={`${styles.batchItemAction} ${styles.countdown}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          cancelCountdown(annotation.id);
+                        }}
+                        title="Cancel"
+                      >
+                        <span className={styles.countdownNumber}>{countdowns[annotation.id]}</span>
+                        <IconXmark size={8} />
+                      </button>
+                    ) : (!annotation.status || annotation.status === 'draft') ? (
+                      <button
+                        className={`${styles.batchItemAction} ${styles.danger}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          cancelCountdown(annotation.id);
+                        }}
+                        title="Delete"
+                      >
+                        <IconTrashAlt size={10} />
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -1995,20 +2082,19 @@ export function PageFeedbackToolbarCSS({
             {apiMode ? (
               <div className={styles.buttonWrapper}>
                 <button
-                  className={`${styles.controlButton} ${styles.sendButton} ${!isDarkMode ? styles.light : ""}`}
+                  className={`${styles.controlButton} ${!isDarkMode ? styles.light : ""}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     hideTooltipsUntilMouseLeave();
-                    sendAllAnnotations();
+                    setClickMode(!clickMode);
                   }}
-                  disabled={!hasAnnotations || isSending || !annotations.some(a => !a.status || a.status === 'draft')}
-                  data-active={isSending}
+                  data-active={clickMode}
                 >
-                  {isSending ? <IconSpinner size={24} /> : <IconSend size={24} />}
+                  {clickMode ? <IconCursor size={24} /> : <IconCrosshair size={24} />}
                 </button>
                 <span className={styles.buttonTooltip}>
-                  Send all
-                  <span className={styles.shortcut}>S</span>
+                  {clickMode ? "Click mode (UI works)" : "Annotate mode"}
+                  <span className={styles.shortcut}>M</span>
                 </span>
               </div>
             ) : (

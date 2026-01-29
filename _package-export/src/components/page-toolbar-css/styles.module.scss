@@ -1887,7 +1887,28 @@ $green: #34c759;
             background: rgba(255, 59, 48, 0.15);
             color: #FF3B30;
         }
+
+        &.countdown {
+            min-width: 32px;
+            gap: 0.125rem;
+            background: rgba(255, 149, 0, 0.2);
+            color: #FF9500;
+            font-size: 0.625rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+
+            &:hover {
+                background: rgba(255, 59, 48, 0.25);
+                color: #FF3B30;
+            }
+        }
     }
+}
+
+.countdownNumber {
+    font-variant-numeric: tabular-nums;
+    margin-right: 0.125rem;
 }
 
 // =============================================================================

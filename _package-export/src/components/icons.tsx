@@ -817,3 +817,29 @@ export const IconClock = ({ size = 16 }: { size?: number }) => (
     />
   </svg>
 );
+
+// Cursor / pointer icon (for click mode)
+export const IconCursor = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M3 2L3 12L6 9L8.5 14L10.5 13L8 8L12 8L3 2Z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+// Crosshair / target icon (for annotation mode)
+export const IconCrosshair = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.5" />
+    <path
+      d="M8 1V4M8 12V15M1 8H4M12 8H15"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+  </svg>
+);
