@@ -425,6 +425,11 @@ export function PageFeedbackToolbarCSS({
   
   // Auto-send countdown timers (annotation id → seconds remaining)
   const [countdowns, setCountdowns] = useState<Record<string, number>>({});
+  
+  // Presence tracking - who else is viewing this page
+  const [viewers, setViewers] = useState<Array<{ editToken: string; userName?: string; cursorX?: number; cursorY?: number; lastSeen: number }>>([]);
+  const lastCursorPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const presenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownTimersRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
 
   // Draggable toolbar state
@@ -1757,6 +1762,82 @@ export function PageFeedbackToolbarCSS({
     };
   }, [apiMode, annotations, pollStatus, pollInterval, isMultiplayer]);
 
+  // Presence heartbeat - send cursor position every 10 seconds when toolbar is active
+  useEffect(() => {
+    if (!apiMode || !apiEndpoint || !editToken || !isActive) {
+      // Clear interval when conditions not met
+      if (presenceIntervalRef.current) {
+        clearInterval(presenceIntervalRef.current);
+        presenceIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const sendHeartbeat = async () => {
+      try {
+        const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
+        await fetch(`${apiEndpoint}/api/presence`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            editToken,
+            pageUrl,
+            cursorX: lastCursorPosRef.current.x,
+            cursorY: lastCursorPosRef.current.y,
+          }),
+        });
+      } catch {
+        // Silently fail - presence is non-critical
+      }
+    };
+
+    const fetchPresence = async () => {
+      try {
+        const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
+        const response = await fetch(
+          `${apiEndpoint}/api/presence?pageUrl=${encodeURIComponent(pageUrl)}&editToken=${encodeURIComponent(editToken)}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            setViewers(data);
+          }
+        }
+      } catch {
+        // Silently fail
+      }
+    };
+
+    // Send initial heartbeat and fetch presence
+    sendHeartbeat();
+    fetchPresence();
+
+    // Set up interval for both heartbeat and presence fetch
+    presenceIntervalRef.current = setInterval(() => {
+      sendHeartbeat();
+      fetchPresence();
+    }, 10000); // 10 seconds
+
+    return () => {
+      if (presenceIntervalRef.current) {
+        clearInterval(presenceIntervalRef.current);
+        presenceIntervalRef.current = null;
+      }
+    };
+  }, [apiMode, apiEndpoint, editToken, isActive]);
+
+  // Track cursor position for presence heartbeat
+  useEffect(() => {
+    if (!apiMode || !isActive) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      lastCursorPosRef.current = { x: e.clientX, y: e.clientY };
+    };
+
+    document.addEventListener('mousemove', handleMouseMove, { passive: true });
+    return () => document.removeEventListener('mousemove', handleMouseMove);
+  }, [apiMode, isActive]);
+
   // Toolbar dragging - mousemove and mouseup
   useEffect(() => {
     if (!dragStartPos) return;
@@ -2246,6 +2327,20 @@ export function PageFeedbackToolbarCSS({
               </span>
             )}
           </div>
+          
+          {/* Viewers indicator - shows when others are viewing */}
+          {apiMode && viewers.length > 0 && (
+            <div 
+              className={`${styles.viewersIndicator} ${!isDarkMode ? styles.light : ''}`}
+              title={viewers.map(v => v.userName || 'Anonymous').join(', ')}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <span>{viewers.length}</span>
+            </div>
+          )}
 
           {/* Controls content - visible when expanded */}
           <div
