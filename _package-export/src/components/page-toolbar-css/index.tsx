@@ -2455,25 +2455,31 @@ export function PageFeedbackToolbarCSS({
               </div>
             )}
 
-            <div className={styles.buttonWrapper}>
-              <button
-                className={`${styles.controlButton} ${!isDarkMode ? styles.light : ""}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  hideTooltipsUntilMouseLeave();
-                  setShowSettings(!showSettings);
-                }}
-              >
-                <IconGear size={24} />
-              </button>
-              <span className={styles.buttonTooltip}>
-                Settings
-              </span>
-            </div>
+            {/* Hide settings button in API mode - not used */}
+            {!apiMode && (
+              <div className={styles.buttonWrapper}>
+                <button
+                  className={`${styles.controlButton} ${!isDarkMode ? styles.light : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    hideTooltipsUntilMouseLeave();
+                    setShowSettings(!showSettings);
+                  }}
+                >
+                  <IconGear size={24} />
+                </button>
+                <span className={styles.buttonTooltip}>
+                  Settings
+                </span>
+              </div>
+            )}
 
-            <div
-              className={`${styles.divider} ${!isDarkMode ? styles.light : ""}`}
-            />
+            {/* Hide divider in API mode when settings is hidden */}
+            {!apiMode && (
+              <div
+                className={`${styles.divider} ${!isDarkMode ? styles.light : ""}`}
+              />
+            )}
 
             <div className={`${styles.buttonWrapper} ${
               toolbarPosition && typeof window !== "undefined" && toolbarPosition.x > window.innerWidth - 120 ? styles.buttonWrapperAlignRight : ""
