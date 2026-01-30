@@ -1750,8 +1750,7 @@ export function PageFeedbackToolbarCSS({
     } else if (!shouldPoll && pollingRef.current) {
       clearInterval(pollingRef.current);
       pollingRef.current = null;
-      // Clear remote annotations when multiplayer is disabled
-      if (!isMultiplayer) setRemoteAnnotations([]);
+      // Don't clear remote annotations - just hide them via display logic
     }
     
     return () => {
@@ -2086,7 +2085,7 @@ export function PageFeedbackToolbarCSS({
         }
       >
         {/* Batch Panel (API mode) */}
-        {apiMode && isActive && (hasAnnotations || (isMultiplayer && remoteAnnotations.length > 0)) && (() => {
+        {apiMode && isActive && (hasAnnotations || remoteAnnotations.length > 0) && (() => {
           // Combine all annotations for unified display
           const allAnnotations = [
             ...annotations.map(a => ({ ...a, isRemote: false })),
