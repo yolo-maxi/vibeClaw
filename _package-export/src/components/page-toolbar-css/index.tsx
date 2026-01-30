@@ -2227,25 +2227,25 @@ export function PageFeedbackToolbarCSS({
                       </span>
                       <div className={styles.batchItemStatus}>
                         {(!annotation.status || annotation.status === 'draft') && countdowns[annotation.id] !== undefined && (
-                          <span className={styles.statusSending}>sending ({countdowns[annotation.id]})</span>
+                          <span className={styles.statusSending}>⏱️ {countdowns[annotation.id]}s</span>
                         )}
                         {annotation.status === 'pending' && (
-                          <span className={styles.statusPending}><IconClock size={10} /></span>
+                          <span className={styles.statusPending}>⏳</span>
                         )}
                         {annotation.status === 'processing' && (
-                          <span className={styles.statusProcessing}><IconSpinner size={10} /></span>
+                          <span className={styles.statusProcessing}>🔄</span>
                         )}
                         {annotation.status === 'completed' && (
-                          <span className={styles.statusCompleted}><IconCheckSmall size={10} /></span>
+                          <span className={styles.statusCompleted}>✅</span>
                         )}
                         {annotation.status === 'interrupted' && (
-                          <span className={styles.statusInterrupted}><IconPause size={10} /></span>
+                          <span className={styles.statusInterrupted}>⚠️</span>
                         )}
                         {annotation.status === 'failed' && (
-                          <span className={styles.statusFailed}><IconXmark size={10} /></span>
+                          <span className={styles.statusFailed}>💥</span>
                         )}
                         {annotation.status === 'rejected' && (
-                          <span className={styles.statusRejected}><IconXmark size={10} /></span>
+                          <span className={styles.statusRejected}>❌</span>
                         )}
                       </div>
                       <div className={styles.batchItemActions}>
@@ -3097,11 +3097,12 @@ export function PageFeedbackToolbarCSS({
                   {userName}
                 </span>
                 <span className={styles.remoteDetailStatus}>
-                  {selectedAnnotation.status === 'pending' && <><IconClock size={12} /> Pending</>}
-                  {selectedAnnotation.status === 'processing' && <><IconSpinner size={12} /> Processing</>}
-                  {selectedAnnotation.status === 'completed' && <><IconCheckSmall size={12} /> Done</>}
+                  {selectedAnnotation.status === 'pending' && <>⏳ Pending</>}
+                  {selectedAnnotation.status === 'processing' && <>🔄 Processing</>}
+                  {selectedAnnotation.status === 'completed' && <>✅ Done</>}
                   {selectedAnnotation.status === 'rejected' && <>❌ Rejected</>}
-                  {selectedAnnotation.status === 'failed' && <>❌ Failed</>}
+                  {selectedAnnotation.status === 'failed' && <>💥 Failed</>}
+                  {selectedAnnotation.status === 'interrupted' && <>⚠️ Interrupted</>}
                 </span>
                 <button 
                   className={styles.remoteDetailClose}
