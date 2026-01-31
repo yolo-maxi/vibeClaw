@@ -2509,6 +2509,23 @@ export function PageFeedbackToolbarCSS({
             {/* Custom buttons slot */}
             {customButtons}
 
+            {/* Dark mode toggle - always visible in toolbar */}
+            <div className={styles.buttonWrapper}>
+              <button
+                className={`${styles.controlButton} ${!isDarkMode ? styles.light : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  hideTooltipsUntilMouseLeave();
+                  setIsDarkMode(!isDarkMode);
+                }}
+              >
+                {isDarkMode ? <IconSun size={20} /> : <IconMoon size={20} />}
+              </button>
+              <span className={styles.buttonTooltip}>
+                {isDarkMode ? "Light mode" : "Dark mode"}
+              </span>
+            </div>
+
             <div className={`${styles.buttonWrapper} ${
               toolbarPosition && typeof window !== "undefined" && toolbarPosition.x > window.innerWidth - 120 ? styles.buttonWrapperAlignRight : ""
             }`}>
