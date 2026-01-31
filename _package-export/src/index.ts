@@ -17,6 +17,10 @@ export { PageFeedbackToolbarCSS as Agentation } from "./components/page-toolbar-
 export { PageFeedbackToolbarCSS } from "./components/page-toolbar-css";
 export type { DemoAnnotation, AgentationProps } from "./components/page-toolbar-css";
 
+// Review Panel - for reviewing/approving annotations
+export { ReviewPanel } from "./components/review-panel";
+export type { ReviewPanelProps } from "./components/review-panel";
+
 // Shared components (for building custom UIs)
 export { AnnotationPopupCSS } from "./components/annotation-popup-css";
 export type {
@@ -26,6 +30,29 @@ export type {
 
 // Icons (same for both versions - they're pure SVG)
 export * from "./components/icons";
+
+// API Client - for interacting with Agentation backend
+export {
+  AGENTATION_API,
+  checkAndSaveEditToken,
+  validateToken,
+  clearEditToken,
+  getEditToken,
+  submitAnnotation,
+  submitAnnotations,
+  fetchAnnotations,
+  fetchAnnotation,
+  approveAnnotation,
+  rejectAnnotation,
+  reviseAnnotation,
+  cancelAnnotation,
+} from "./api";
+export type {
+  ApiAnnotationStatus,
+  AnnotationSummary,
+  TokenValidation,
+  ActionResult,
+} from "./api";
 
 // Utilities (for building custom UIs)
 export {
