@@ -145,8 +145,6 @@ export type PageFeedbackToolbarCSSProps = {
   multiplayerMode?: boolean;
   /** Default review panel filter to multiplayer */
   defaultMultiplayer?: boolean;
-  /** Custom buttons to render in the toolbar */
-  customButtons?: React.ReactNode;
 };
 
 /** Alias for PageFeedbackToolbarCSSProps */
@@ -169,7 +167,6 @@ export function PageFeedbackToolbarCSS({
   pollInterval = 20000,
   multiplayerMode = false,
   defaultMultiplayer = false,
-  customButtons,
 }: PageFeedbackToolbarCSSProps = {}) {
   const [isActive, setIsActive] = useState(false);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -1702,8 +1699,6 @@ export function PageFeedbackToolbarCSS({
               </span>
             </div>
 
-            {/* Custom buttons slot */}
-            {customButtons}
 
             {/* Dark mode toggle - always visible in toolbar */}
             <div className={styles.buttonWrapper}>
