@@ -1,14 +1,16 @@
 // =============================================================================
-// Agentation API Client
+// Clawvibes API Client
 // =============================================================================
 //
-// API client for interacting with the Agentation backend.
+// API client for interacting with the Clawvibes backend.
 // Handles token management, annotation submission, and review actions.
 //
 // =============================================================================
 
-export const AGENTATION_API = "https://agentation.repo.box";
-const STORAGE_KEY = "agentation_edit_token";
+export const CLAWVIBES_API = "https://clawvibes.repo.box";
+// Legacy alias for backwards compatibility
+export const AGENTATION_API = CLAWVIBES_API;
+const STORAGE_KEY = "clawvibes_edit_token";
 
 // =============================================================================
 // Types
@@ -182,7 +184,7 @@ export async function fetchAnnotations(token: string, all: boolean = true): Prom
     if (!res.ok) throw new Error("Failed to fetch");
     return await res.json();
   } catch (err) {
-    console.error("[Agentation] Failed to fetch annotations:", err);
+    console.error("[Clawvibes] Failed to fetch annotations:", err);
     return [];
   }
 }

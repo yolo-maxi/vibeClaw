@@ -1,10 +1,10 @@
 {
-  "name": "agentation-monorepo",
+  "name": "clawvibes-monorepo",
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter agentation watch & pnpm --filter feedback-tool-example dev",
-    "build": "pnpm --filter agentation build",
+    "dev": "pnpm --filter clawvibes watch & pnpm --filter feedback-tool-example dev",
+    "build": "pnpm --filter clawvibes build",
     "example": "pnpm --filter feedback-tool-example dev",
     "pack": "cd _package-export && pnpm pack"
   }

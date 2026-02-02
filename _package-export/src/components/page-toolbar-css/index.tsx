@@ -57,6 +57,8 @@ import {
   saveAnnotations,
   getStorageKey,
 } from "../../utils/storage";
+import { validateToken, type TokenValidation } from "../../api";
+import { ReviewPanel } from "../review-panel";
 
 import type { Annotation } from "../../types";
 import styles from "./styles.module.scss";
@@ -417,24 +419,18 @@ export function PageFeedbackToolbarCSS({
   // Multiplayer mode - shows all users' annotations
   const [isMultiplayer, setIsMultiplayer] = useState(defaultMultiplayer);
   const [remoteAnnotations, setRemoteAnnotations] = useState<Annotation[]>([]);
-  const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
-  const [showArchived, setShowArchived] = useState(false);
-  const [listExpanded, setListExpanded] = useState(false);
-  const [panelCollapsed, setPanelCollapsed] = useState(true); // Start collapsed for cleaner UI
   const [selectedRemoteId, setSelectedRemoteId] = useState<string | null>(null);
-  const VISIBLE_COUNT = 5; // Show last 5 by default
-  
+
   // Click mode - when true, user can interact with UI normally (no annotation creation)
   const [clickMode, setClickMode] = useState(false);
-  
-  // Auto-send countdown timers (annotation id → seconds remaining)
-  const [countdowns, setCountdowns] = useState<Record<string, number>>({});
   
   // Presence tracking - who else is viewing this page
   const [viewers, setViewers] = useState<Array<{ editToken: string; userName?: string; cursorX?: number; cursorY?: number; lastSeen: number }>>([]);
   const lastCursorPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const presenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const countdownTimersRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
+
+  // Token validation for ReviewPanel
+  const [tokenInfo, setTokenInfo] = useState<TokenValidation | null>(null);
 
   // Draggable toolbar state
   const [toolbarPosition, setToolbarPosition] = useState<{
@@ -1330,80 +1326,33 @@ export function PageFeedbackToolbarCSS({
     return () => document.removeEventListener("mouseup", handleMouseUp);
   }, [isActive, isDragging]);
 
-  // Start countdown for auto-send (API mode)
-  const startCountdown = useCallback((annotationId: string) => {
+  // Send annotation immediately (API mode)
+  const sendAnnotationImmediately = useCallback((annotation: Annotation) => {
     if (!apiMode || !onSend) return;
-    
-    // Set initial countdown
-    setCountdowns(prev => ({ ...prev, [annotationId]: 10 }));
-    
-    // Start interval
-    const timer = setInterval(() => {
-      setCountdowns(prev => {
-        const current = prev[annotationId];
-        if (current === undefined || current <= 1) {
-          // Countdown finished - trigger auto-send
-          clearInterval(timer);
-          delete countdownTimersRef.current[annotationId];
-          
-          // Get the annotation and send it
-          setAnnotations(currentAnnotations => {
-            const annotation = currentAnnotations.find(a => a.id === annotationId);
-            if (annotation && (!annotation.status || annotation.status === 'draft')) {
-              // Mark as pending and send
-              onSend([annotation]).then(results => {
-                const result = results[0];
-                setAnnotations(prev => prev.map(a => {
-                  if (a.id === annotationId) {
-                    return {
-                      ...a,
-                      status: result?.success ? 'pending' as const : 'failed' as const,
-                      remoteId: result?.remoteId,
-                    };
-                  }
-                  return a;
-                }));
-              }).catch(() => {
-                setAnnotations(prev => prev.map(a => 
-                  a.id === annotationId ? { ...a, status: 'failed' as const } : a
-                ));
-              });
-              
-              // Immediately mark as sending
-              return currentAnnotations.map(a => 
-                a.id === annotationId ? { ...a, status: 'pending' as const } : a
-              );
-            }
-            return currentAnnotations;
-          });
-          
-          const { [annotationId]: _, ...rest } = prev;
-          return rest;
-        }
-        return { ...prev, [annotationId]: current - 1 };
-      });
-    }, 1000);
-    
-    countdownTimersRef.current[annotationId] = timer;
-  }, [apiMode, onSend]);
 
-  // Cancel countdown and remove annotation
-  const cancelCountdown = useCallback((annotationId: string) => {
-    // Clear timer
-    if (countdownTimersRef.current[annotationId]) {
-      clearInterval(countdownTimersRef.current[annotationId]);
-      delete countdownTimersRef.current[annotationId];
-    }
-    
-    // Remove from countdowns
-    setCountdowns(prev => {
-      const { [annotationId]: _, ...rest } = prev;
-      return rest;
+    // Mark as pending and send
+    setAnnotations(prev => prev.map(a =>
+      a.id === annotation.id ? { ...a, status: 'pending' as const } : a
+    ));
+
+    onSend([annotation]).then(results => {
+      const result = results[0];
+      setAnnotations(prev => prev.map(a => {
+        if (a.id === annotation.id) {
+          return {
+            ...a,
+            status: result?.success ? 'pending' as const : 'failed' as const,
+            remoteId: result?.remoteId,
+          };
+        }
+        return a;
+      }));
+    }).catch(() => {
+      setAnnotations(prev => prev.map(a =>
+        a.id === annotation.id ? { ...a, status: 'failed' as const } : a
+      ));
     });
-    
-    // Delete the annotation
-    deleteAnnotation(annotationId);
-  }, []);
+  }, [apiMode, onSend]);
 
   // Add annotation
   const addAnnotation = useCallback(
@@ -1445,10 +1394,10 @@ export function PageFeedbackToolbarCSS({
 
       // Fire callback
       onAnnotationAdd?.(newAnnotation);
-      
-      // In API mode, start 10s countdown for auto-send
+
+      // In API mode, send immediately
       if (apiMode) {
-        startCountdown(newAnnotation.id);
+        sendAnnotationImmediately(newAnnotation);
       }
 
       // Animate out the pending annotation UI
@@ -1460,7 +1409,7 @@ export function PageFeedbackToolbarCSS({
 
       window.getSelection()?.removeAllRanges();
     },
-    [pendingAnnotation, onAnnotationAdd, apiMode, startCountdown],
+    [pendingAnnotation, onAnnotationAdd, apiMode, sendAnnotationImmediately],
   );
 
   // Cancel annotation with exit animation
@@ -1735,6 +1684,22 @@ export function PageFeedbackToolbarCSS({
       // Polling failed, will retry on next interval
     }
   }, [apiMode, apiEndpoint, editToken, annotations, onStatusChange, isMultiplayer]);
+
+  // Validate token and get token info for ReviewPanel
+  useEffect(() => {
+    if (!apiMode || !editToken) {
+      setTokenInfo(null);
+      return;
+    }
+
+    validateToken(editToken).then(info => {
+      if (info.valid) {
+        setTokenInfo(info);
+      }
+    }).catch(() => {
+      // Token validation failed silently
+    });
+  }, [apiMode, editToken]);
 
   // Start/stop polling based on pending annotations or multiplayer mode
   useEffect(() => {
@@ -2088,253 +2053,6 @@ export function PageFeedbackToolbarCSS({
             : undefined
         }
       >
-        {/* Batch Panel (API mode) */}
-        {apiMode && isActive && (hasAnnotations || remoteAnnotations.length > 0) && (() => {
-          // Combine all annotations for unified display
-          const allAnnotations = [
-            ...annotations.map(a => ({ ...a, isRemote: false })),
-            ...(isMultiplayer ? remoteAnnotations.map(a => ({ ...a, isRemote: true })) : []),
-          ];
-          
-          // Sort by status priority (draft/pending first, then by timestamp desc)
-          const statusPriority: Record<string, number> = {
-            draft: 0,
-            pending: 1,
-            processing: 2,
-            completed: 3,
-            interrupted: 4,
-            failed: 5,
-            rejected: 6,
-          };
-          
-          const sortedAnnotations = [...allAnnotations].sort((a, b) => {
-            const statusA = a.status || 'draft';
-            const statusB = b.status || 'draft';
-            if (statusPriority[statusA] !== statusPriority[statusB]) {
-              return statusPriority[statusA] - statusPriority[statusB];
-            }
-            return (b.timestamp || 0) - (a.timestamp || 0);
-          });
-          
-          // Filter out archived unless showing archived
-          const visibleAnnotations = sortedAnnotations.filter(a => 
-            showArchived || !archivedIds.has(a.remoteId || a.id)
-          );
-          
-          // Pagination: show only VISIBLE_COUNT unless expanded
-          const displayedAnnotations = listExpanded 
-            ? visibleAnnotations 
-            : visibleAnnotations.slice(0, VISIBLE_COUNT);
-          const hasMore = visibleAnnotations.length > VISIBLE_COUNT;
-          const hiddenCount = visibleAnnotations.length - VISIBLE_COUNT;
-          const archivedCount = sortedAnnotations.filter(a => archivedIds.has(a.remoteId || a.id)).length;
-          
-          // Count stats
-          const draftCount = allAnnotations.filter(a => !a.status || a.status === 'draft').length;
-          const implementingCount = allAnnotations.filter(a => a.status === 'pending' || a.status === 'processing').length;
-          const doneCount = allAnnotations.filter(a => a.status === 'completed').length;
-          const rejectedCount = allAnnotations.filter(a => a.status === 'rejected' || a.status === 'failed' || a.status === 'interrupted').length;
-          const totalVisible = visibleAnnotations.length;
-          
-          return (
-            <div 
-              className={`${styles.batchPanel} ${!isDarkMode ? styles.light : ""} ${listExpanded ? styles.expanded : ''} ${panelCollapsed ? styles.collapsed : ''}`}
-              data-feedback-toolbar
-              data-batch-panel
-              onClick={panelCollapsed ? () => setPanelCollapsed(false) : undefined}
-            >
-              <div className={styles.batchPanelHeader}>
-                <span className={styles.batchPanelTitle}>
-                  {totalVisible} items
-                  {!panelCollapsed && draftCount > 0 && <> · {draftCount} draft</>}
-                  {!panelCollapsed && implementingCount > 0 && <> · {implementingCount} implementing</>}
-                  {!panelCollapsed && doneCount > 0 && <> · {doneCount} done</>}
-                  {!panelCollapsed && rejectedCount > 0 && <> · {rejectedCount} rejected</>}
-                  {!panelCollapsed && archivedCount > 0 && !showArchived && (
-                    <button 
-                      className={styles.archivedToggle}
-                      onClick={(e) => { e.stopPropagation(); setShowArchived(true); }}
-                    >
-                      +{archivedCount} archived
-                    </button>
-                  )}
-                </span>
-                {/* Expand icon when collapsed */}
-                {panelCollapsed && (
-                  <span className={styles.expandIcon}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="18 15 12 9 6 15" />
-                    </svg>
-                  </span>
-                )}
-                {/* Collapse button when expanded */}
-                {!panelCollapsed && (
-                  <button
-                    className={styles.collapseBtn}
-                    onClick={(e) => { e.stopPropagation(); setPanelCollapsed(true); }}
-                    title="Collapse"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </button>
-                )}
-                {/* Multiplayer toggle */}
-                {!panelCollapsed && multiplayerMode && (
-                  <button
-                    className={`${styles.multiplayerToggle} ${isMultiplayer ? styles.active : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsMultiplayer(!isMultiplayer);
-                    }}
-                    title={isMultiplayer ? "Hide others' annotations" : "Show all annotations (multiplayer)"}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-              <div className={styles.batchPanelList}>
-                {displayedAnnotations.map((annotation) => {
-                  const userName = annotation.tokenOwner || 'You';
-                  const userColor = getUserColor(userName);
-                  const isArchived = archivedIds.has(annotation.remoteId || annotation.id);
-                  const isSelected = selectedRemoteId === (annotation.remoteId || annotation.id);
-                  
-                  return (
-                    <div
-                      key={annotation.id}
-                      className={`${styles.batchItem} ${annotation.status === 'completed' ? styles.completed : ''} ${annotation.status === 'failed' ? styles.failed : ''} ${annotation.status === 'rejected' ? styles.rejected : ''} ${isArchived ? styles.archived : ''} ${isSelected ? styles.selected : ''} ${annotation.isRemote ? styles.remote : ''}`}
-                      onClick={() => {
-                        if (annotation.isRemote) {
-                          setSelectedRemoteId(isSelected ? null : (annotation.remoteId || annotation.id));
-                        }
-                      }}
-                      style={{ cursor: annotation.isRemote ? 'pointer' : undefined }}
-                    >
-                      {/* User name tag with color instead of number */}
-                      <span 
-                        className={styles.batchItemUserTag}
-                        style={{ backgroundColor: userColor }}
-                        title={userName}
-                      >
-                        {getUserInitials(userName)}
-                      </span>
-                      <span className={styles.batchItemElement}>{annotation.element}</span>
-                      <span className={styles.batchItemComment}>
-                        {annotation.comment.length > 25 ? annotation.comment.slice(0, 25) + '...' : annotation.comment}
-                      </span>
-                      <div className={styles.batchItemStatus}>
-                        {(!annotation.status || annotation.status === 'draft') && countdowns[annotation.id] !== undefined && (
-                          <span className={styles.statusSending}>⏱️ {countdowns[annotation.id]}s</span>
-                        )}
-                        {annotation.status === 'pending' && (
-                          <span className={styles.statusPending}>⏳</span>
-                        )}
-                        {annotation.status === 'processing' && (
-                          <span className={styles.statusProcessing}>🔄</span>
-                        )}
-                        {annotation.status === 'completed' && (
-                          <span className={styles.statusCompleted}>✅</span>
-                        )}
-                        {annotation.status === 'interrupted' && (
-                          <span className={styles.statusInterrupted}>⚠️</span>
-                        )}
-                        {annotation.status === 'failed' && (
-                          <span className={styles.statusFailed}>💥</span>
-                        )}
-                        {annotation.status === 'rejected' && (
-                          <span className={styles.statusRejected}>❌</span>
-                        )}
-                      </div>
-                      <div className={styles.batchItemActions}>
-                        {/* Cancel countdown for drafts */}
-                        {countdowns[annotation.id] !== undefined && (
-                          <button
-                            className={`${styles.batchItemAction} ${styles.danger}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              cancelCountdown(annotation.id);
-                            }}
-                            title="Cancel"
-                          >
-                            <IconXmark size={10} />
-                          </button>
-                        )}
-                        {/* Archive button for completed/failed/interrupted/rejected items */}
-                        {(annotation.status === 'completed' || annotation.status === 'failed' || annotation.status === 'interrupted' || annotation.status === 'rejected') && !isArchived && (
-                          <button
-                            className={styles.batchItemAction}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setArchivedIds(prev => new Set([...prev, annotation.remoteId || annotation.id]));
-                            }}
-                            title="Archive"
-                          >
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="21 8 21 21 3 21 3 8" />
-                              <rect x="1" y="3" width="22" height="5" />
-                              <line x1="10" y1="12" x2="14" y2="12" />
-                            </svg>
-                          </button>
-                        )}
-                        {/* Unarchive button for archived items */}
-                        {isArchived && (
-                          <button
-                            className={styles.batchItemAction}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setArchivedIds(prev => {
-                                const next = new Set(prev);
-                                next.delete(annotation.remoteId || annotation.id);
-                                return next;
-                              });
-                            }}
-                            title="Unarchive"
-                          >
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="21 8 21 21 3 21 3 8" />
-                              <rect x="1" y="3" width="22" height="5" />
-                              <line x1="12" y1="10" x2="12" y2="16" />
-                              <polyline points="9 13 12 10 15 13" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Load more / collapse controls */}
-              {hasMore && (
-                <div className={styles.batchPanelFooter}>
-                  <button
-                    className={styles.loadMoreBtn}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setListExpanded(!listExpanded);
-                    }}
-                  >
-                    {listExpanded ? 'Show less' : `Load ${hiddenCount} more`}
-                  </button>
-                  {showArchived && archivedCount > 0 && (
-                    <button
-                      className={styles.hideArchivedBtn}
-                      onClick={(e) => { e.stopPropagation(); setShowArchived(false); }}
-                    >
-                      Hide archived
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })()}
-        
         {/* Morphing container */}
         <div
           className={`${styles.toolbarContainer} ${!isDarkMode ? styles.light : ""} ${isActive ? styles.expanded : styles.collapsed} ${showEntranceAnimation ? styles.entrance : ""} ${isDraggingToolbar ? styles.dragging : ""}`}
@@ -2508,6 +2226,15 @@ export function PageFeedbackToolbarCSS({
 
             {/* Custom buttons slot */}
             {customButtons}
+
+            {/* Review Panel - shown in API mode when token is valid */}
+            {apiMode && editToken && tokenInfo && (
+              <ReviewPanel
+                editToken={editToken}
+                tokenInfo={tokenInfo}
+                isDark={isDarkMode}
+              />
+            )}
 
             {/* Dark mode toggle - always visible in toolbar */}
             <div className={styles.buttonWrapper}>
@@ -3041,9 +2768,7 @@ export function PageFeedbackToolbarCSS({
       {/* Remote markers layer (multiplayer mode) - shows other users' annotations */}
       {isMultiplayer && markersVisible && (
         <div className={styles.markersLayer} data-feedback-toolbar>
-          {remoteAnnotations
-            .filter((a) => !archivedIds.has(a.remoteId || a.id))
-            .map((annotation) => {
+          {remoteAnnotations.map((annotation) => {
               const userName = annotation.tokenOwner || 'Unknown';
               const userColor = getUserColor(userName);
               const isSelected = selectedRemoteId === (annotation.remoteId || annotation.id);
@@ -3370,6 +3095,16 @@ export function PageFeedbackToolbarCSS({
             </>
           )}
         </div>
+      )}
+
+      {/* Review Panel - only in API mode with valid token */}
+      {apiMode && tokenInfo && editToken && (
+        <ReviewPanel
+          editToken={editToken}
+          tokenInfo={tokenInfo}
+          onRefresh={() => pollStatus()}
+          isDark={isDarkMode}
+        />
       )}
     </>,
     document.body,

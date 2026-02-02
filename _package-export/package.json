@@ -1,5 +1,5 @@
 {
-  "name": "agentation-flow",
+  "name": "clawvibes",
   "version": "1.4.0",
   "description": "Visual feedback for AI coding agents - with API mode and multiplayer support",
   "license": "PolyForm-Shield-1.0.0",
@@ -30,7 +30,7 @@
     "test:watch": "vitest"
   },
   "keywords": [
-    "agentation",
+    "clawvibes",
     "feedback",
     "annotations",
     "ai",
@@ -39,13 +39,13 @@
     "visual-feedback",
     "multiplayer"
   ],
-  "homepage": "https://github.com/yolo-maxi/agentation",
+  "homepage": "https://github.com/yolo-maxi/clawvibes",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yolo-maxi/agentation.git"
+    "url": "https://github.com/yolo-maxi/clawvibes.git"
   },
   "bugs": {
-    "url": "https://github.com/yolo-maxi/agentation/issues"
+    "url": "https://github.com/yolo-maxi/clawvibes/issues"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
